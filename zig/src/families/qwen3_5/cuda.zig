@@ -20,6 +20,7 @@ pub const joint = @import("cuda_joint_readout.zig");
 pub const joint_schema = @import("cuda_joint_schema");
 
 test {
+    _ = @import("cuda_projection_many.zig");
     _ = @import("cuda_attention.zig");
     _ = @import("cuda_prompt.zig");
     _ = @import("cuda_prompt_tail.zig");
