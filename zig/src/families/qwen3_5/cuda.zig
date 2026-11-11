@@ -21,6 +21,7 @@ pub const joint_schema = @import("cuda_joint_schema");
 
 test {
     _ = @import("cuda_attention.zig");
+    _ = @import("cuda_shapes.zig");
     _ = @import("cuda_prompt.zig");
     _ = @import("cuda_prompt_tail.zig");
     _ = @import("cuda_forward.zig");
