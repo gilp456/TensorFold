@@ -45,7 +45,7 @@ pub fn run(r: *Rig, set: glm.glue.Set) !void {
         try check.sameBytes("GLM paged FP8 scales equal contiguous", try r.back(paged_scales + offset, rows * 4), scales[first * 4 ..][0 .. rows * 4]);
     }
     const untouched = try r.back(arena + page_bytes, page_bytes);
-    for (untouched) |byte| if (byte != 0) return error.Fp8WriteTouchedUnmappedPage;
+    for (untouched) |byte| if (byte != 0xff) return error.Fp8WriteTouchedUnmappedPage;
 
     for ([_]usize{ 3, 64 }) |rows| {
         const hb: usize = if (rows < 64) 16 else 32;

@@ -108,6 +108,18 @@ pub fn targets(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     runner.addImport("exlr8_frozen_dense", b.createModule(.{ .root_source_file = b.path("zig/tests/fixtures/exlr8/frozen_dense.zig"), .target = target, .optimize = optimize }));
     for (exlr8_build.denseModules(b, target, optimize, exlr8, exlr8_tests[0])) |m| runner.addImport(m.name, m.module);
     runner.addImport("glm_cuda", glmCuda(b, target, optimize, cuda, mods.core, mods.lanes, mods.heat, mods.api));
+    const glm_reference = b.createModule(.{
+        .root_source_file = b.path("zig/tests/cuda/glm_reference_main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .strip = strip,
+    });
+    inline for (.{ "cuda", "core", "glm_cuda" }) |name|
+        glm_reference.addImport(name, runner.import_table.get(name).?);
+    const glm_reference_exe = b.addExecutable(.{ .name = "tf-glm-reference", .root_module = glm_reference });
+    b.step("compile-glm-reference", "Compile only the GLM synthetic CUDA reference runner").dependOn(&glm_reference_exe.step);
+    b.step("tf-glm-reference", "Install only the GLM synthetic CUDA reference runner").dependOn(&b.addInstallArtifact(glm_reference_exe, .{}).step);
     @import("minimax_cuda.zig").targets(b, target, optimize, strip, cuda, mods.core, mods.lanes, runner);
     for ([_]struct { []const u8, *std.Build.Module }{ .{ "kolibri1", kolibri1Module(b, target, optimize, cuda, mods.core, mods.lanes) }, .{ "dory", @import("dory.zig").module(b, target, optimize, cuda, mods.core, mods.lanes) } }) |m| runner.addImport(m[0], m[1]);
     runner.addImport("gemma4_cuda", @import("gemma4_cuda.zig").module(b, target, optimize, cuda, mods.core, mods.lanes));
