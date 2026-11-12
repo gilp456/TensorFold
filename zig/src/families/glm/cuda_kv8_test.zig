@@ -296,15 +296,16 @@ test "GLM FP8 KV: a logical table keeps the assembled token lists positions, whi
     const s: sparse.Scratch = .{ .scores = 5000, .ls = 5100, .li = 5200, .pools = 5300, .at = 5400 };
     for ([_]bool{ true, false }) |logical| {
         Rec.n = 0;
-        const tab: latent.Table = .{ .pt = 900, .ps = 3_266_560, .page_rows = 3_190, .logical = logical };
-        try sparse.selectTokens(set, ops, stream, 100, 200, 576, 1000, tab, 300, 5000, 3, 32, 128, 2048, s, 6000, 7000);
+        const pooled: latent.Table = .{ .pt = 900, .ps = 3_266_560, .page_rows = 3_190 };
+        const tab: latent.Table = .{ .pt = 901, .ps = 3_266_560, .page_rows = 3_190, .logical = logical };
+        try sparse.selectTokensProfile(set, ops, stream, 100, 200, 576, 1000, pooled, tab, 300, 5000, 3, 32, 128, 2048, s, 6000, 7000, null, null);
         try t.expectEqual(@as(usize, 3), Rec.n);
         try t.expectEqual(kid(ks.scores), Rec.ids[0]);
         try t.expectEqualSlices(u64, &.{ 900, 3_266_560 }, Rec.args[0][12..14]);
         try t.expectEqual(@as(usize, 15), Rec.ids[2]);
         try t.expectEqualSlices(u64, &.{ 5300, 300 }, Rec.args[2][0..2]);
         try t.expectEqual(@as(u32, sparse.topk_pools), Rec.word(2, 2));
-        try t.expectEqualSlices(u64, &.{ 6000, 7000, if (logical) 0 else 900, 3_190 }, Rec.args[2][3..7]);
+        try t.expectEqualSlices(u64, &.{ 6000, 7000, if (logical) 0 else 901, 3_190 }, Rec.args[2][3..7]);
     }
 }
 

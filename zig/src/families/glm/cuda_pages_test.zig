@@ -242,17 +242,17 @@ test "TF_KV_PAGES: a stream past the paged sequences waits for one, and its slot
     var ln: Lanes = .{ .x = .{ .e = &f.e, .link = undefined } };
     defer ln.lanes.deinit(f.e.gpa);
     var streams: [3]lanes.Stream = undefined; // as many at once as lanes: the engine's own sequence and one more
-    try expectEqual(@as(usize, 2), (try ln.seat(&streams[0], 600, 100, &.{})).len);
+    try expectEqual(@as(usize, 2), (try ln.seat(&streams[0], 600, 100, &.{}, null)).len);
     try expectEqual(@as(u32, 0), ln.lanes.get(&streams[0]).?.slot); // the engine's own takes pages too
-    try expectEqual(@as(usize, 2), (try ln.seat(&streams[1], 600, 100, &.{})).len);
+    try expectEqual(@as(usize, 2), (try ln.seat(&streams[1], 600, 100, &.{}, null)).len);
     const live = F.live;
-    try std.testing.expectError(error.LaneMemory, ln.seat(&streams[2], 600, 100, &.{})); // slot 2: past the paged ones
+    try std.testing.expectError(error.LaneMemory, ln.seat(&streams[2], 600, 100, &.{}, null)); // slot 2: past the paged ones
     try expectEqual(live, F.live); // nothing allocated for it
     try expectEqual(@as(usize, 2), f.e.seqs.items.len);
     try expectEqual(@as(usize, 2), ln.lanes.count());
     _ = ln.lanes.remove(&streams[0]); // a stream ends: the one that waited takes its paged sequence
     p.close(0);
-    _ = try ln.seat(&streams[2], 600, 100, &.{});
+    _ = try ln.seat(&streams[2], 600, 100, &.{}, null);
     try expectEqual(@as(u32, 0), ln.lanes.get(&streams[2]).?.slot);
     try expectEqual(@as(u32, 0), f.e.slot);
 }
@@ -268,8 +268,8 @@ test "TF_KV_PAGES: the lane host admits a request by the pool alone, the engine'
     defer ln.lanes.deinit(f.e.gpa);
     try expect(ln.fits(3000, 100)); // 7 of the 8 pages
     var streams: [2]lanes.Stream = undefined;
-    _ = try ln.seat(&streams[0], 600, 100, &.{}); // slot 0: 2 pages
-    _ = try ln.seat(&streams[1], 2000, 100, &.{}); // slot 1: 5 pages
+    _ = try ln.seat(&streams[0], 600, 100, &.{}, null); // slot 0: 2 pages
+    _ = try ln.seat(&streams[1], 2000, 100, &.{}, null); // slot 1: 5 pages
     _ = ln.lanes.remove(&streams[0]);
     p.close(0);
     try expect(!ln.fits(3000, 100)); // the engine's own is free, but only 3 pages are
@@ -527,6 +527,28 @@ test "GLM FP8 KV: paged layout charges the actual E4M3 codes and scales" {
     f.e.mtp = true;
     const l = try pages_mod.layout(std.testing.allocator, &f.e, 0);
     try expectEqual(@as(u64, 1160), l.token_bytes);
+}
+
+test "GLM FP8 KV: split layout and direct page constructors refuse before device allocation" {
+    var f: Fake = undefined;
+    try f.init(std.testing.allocator);
+    defer f.deinit(null);
+    const l = try pages_mod.layout(std.testing.allocator, &f.e, 0);
+    f.e.settings.kv8 = true;
+    f.e.settings.kv_split = true;
+    f.e.share = f.e.w.share;
+    const err = error.KvSplitFp8Unsupported;
+    try std.testing.expectError(err, pages_mod.layout(std.testing.allocator, &f.e, 0));
+    try std.testing.expectError(err, pages_mod.ownSequence(&f.e));
+    try std.testing.expectError(err, pages_mod.Pages.init(std.testing.allocator, &f.e, l, 2, 16, true));
+    const state = @import("cuda_state.zig");
+    try std.testing.expectError(err, state.State.initPagedFormat(std.testing.allocator, &f.d, &f.e.w, 4096, .{
+        .kv = 0x80000000,
+        .pages = 8,
+        .page_bytes = state.latentPageBytes(&f.e.w),
+        .split = true,
+    }, true));
+    try expectEqual(@as(usize, 0), F.live);
 }
 
 test "every host allocation failure while making the pages leaves no device buffer behind" {
