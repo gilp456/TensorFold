@@ -278,7 +278,8 @@ test "a reply's end is born with its request's prompt: the history mark that req
     for (&tokens, 0..) |*t, i| t.* = @intCast(1_000_000 + i);
     const prompt = tokens[0 .. at + 7];
     try std.testing.expect(store.keep(prompt, at, null, &.{}, &.{}));
-    var s = try lanes.Stream.init(gpa, .{ .id = "reply", .prompt = prompt, .max_new = 100 });
+    // the request's rendered history ends at its mark: what keepEnd pins while both states fit
+    var s = try lanes.Stream.init(gpa, .{ .id = "reply", .prompt = prompt, .max_new = 100, .history_len = at });
     defer s.deinit(gpa);
     try s.context.appendSlice(gpa, tokens[at + 7 ..]);
     keepEnd(&store, gpa, &s, tokens.len); // three states pass the budget: the least recently used goes
