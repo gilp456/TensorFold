@@ -61,6 +61,8 @@ test {
     _ = @import("cuda_taps_tp_test.zig");
     _ = @import("cuda_roce_multi.zig");
     _ = @import("cuda_lanes_test.zig");
+    _ = @import("cuda_repetition_tests.zig");
+    _ = @import("cuda_processor_wire.zig");
     _ = @import("cuda_prompt_cuts.zig");
     _ = @import("cuda_request_starts_test.zig");
     _ = @import("dflash_load.zig");
